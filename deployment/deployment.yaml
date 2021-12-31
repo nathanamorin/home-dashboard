@@ -42,7 +42,8 @@ spec:
     spec:
       containers:
       - name: home-dashboard
-        image: ghcr.io/nathanamorin/home-dashboard:sha-251c0bd
+        # Check packages in github for latest version
+        image: ghcr.io/nathanamorin/home-dashboard:sha-642f9f2
         volumeMounts:
         - name: config
           mountPath: /usr/share/nginx/html/apps.json
