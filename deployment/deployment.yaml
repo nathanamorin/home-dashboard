@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-dashboard
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-dashboard-config
+  namespace: home-dashboard
+data:
+  apps.json: |
+    {
+        "apps": [
+            {
+                "url": "https://app.plex.tv/desktop#",
+                "icon": "data:image/svg+xml;base64, PHN2ZyB3aWR0aD0iMzA4NnB4IiBoZWlnaHQ9IjMwODZweCIgdmlld0JveD0iMCAtMTA0MyAzMDg2IDMwODYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHRpdGxlPnBsZXgtbG9nby1saWdodDwvdGl0bGU+PHBhdGggZmlsbD0iIzQ5NDk0OSIgZD0iTTMwODUuOTkgMGgtMjkwLjAwMUwyNTA1Ljk5IDUwMGwyODkuOTk5IDUwMGgyODkuNzQ4bC0yODkuNzQ4LTQ5OS43NUwzMDg1Ljk5IDAiLz48cmFkaWFsR3JhZGllbnQgaWQ9ImEiIGN4PSIxMjQ0LjM1MSIgY3k9IjkyMC4wODEiIHI9Ii45MjUiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoNjEwIDAgMCAtMTAwMC41IC03NTYzMjMuNjI1IDkyMTAzOC43NSkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmOWJlMDMiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNjYzdjMTkiLz48L3JhZGlhbEdyYWRpZW50PjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik0yMTg2IDBoMjkwbDMyMCA1MDAuMjUtMzIwIDUwMC4yNWgtMjkwbDMxOS45OTktNTAwLjI1TDIxODYgMCIvPjxwYXRoIGZpbGw9IiM0OTQ5NDkiIGQ9Ik0yMDg1Ljk0NyAxMDAwaC01NzcuMDczVjBoNTc3LjA3M3YxNzMuNzM3SDE3MjEuMzR2MjE5LjU2MmgzMzkuMjU1VjU2Ny4wM0gxNzIxLjM0djI1Ny44NjRoMzY0LjYwN1YxMDAwTTc5MS4yNzYgMTAwMFYwaDIxMi4wNHY4MjQuODk1aDQwNS42MDlWMTAwMEg3OTEuMjc2TTU4OS45NDcgNTU4LjgyNGMtNjcuMjY4IDU3LjAwNy0xNjIuOTEgODUuNTAxLTI4Ni45MzggODUuNTAxSDIxMi4wNFYxMDAwSDBWNDcwLjMzOGwyOTAgLjM1OWMxNzcuNTYyLTIuMDY5IDE4Ni44NDItMTEwLjgxOCAxODYuODQyLTE0OC40OTcgMC0zNC45NzkgMC0xNDYuNzU1LTE1Ny44NDItMTQ4LjVsLTMxOSAuMDAzVjBoMzE5LjQyNGMxMjEuMjkzIDAgMjEzLjUxNSAyNi4xMDcgMjc2LjY3NyA3OC4zMjEgNjMuMTUyIDUyLjIxMyA5NC43MzMgMTMwLjA3MSA5NC43MzMgMjMzLjU4MSAwIDEwNy42MjUtMzMuNjMzIDE4OS45MjgtMTAwLjg4NyAyNDYuOTIyeiIvPjxwYXRoIGZpbGw9IiM0OTQ5NDkiIGQ9Ik0wIDExMGgyMTIuMnY0MjlIMHoiLz48L3N2Zz4="
+            }
+        ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-dashboard
+  namespace: home-dashboard
+  labels:
+    app: home-dashboard
+  annotations:
+    # Auto redeploy on config map change: https://github.com/wave-k8s/wave
+    wave.pusher.com/update-on-config-change: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: home-dashboard
+  template:
+    metadata:
+      labels:
+        app: home-dashboard
+        name: home-dashboard
+    spec:
+      containers:
+      - name: home-dashboard
+        image: ghcr.io/nathanamorin/home-dashboard:sha-251c0bd
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/nginx/html/apps.json
+          subPath: apps.json
+      volumes:
+      - name: config
+        configMap:
+          name: home-dashboard-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-dashboard
+  namespace: home-dashboard
+spec:
+  selector:
+    app: home-dashboard
+  ports:
+  - port: 80
+    targetPort: 80
+    name: home-dashboard
+---
+# Example ingress below, but will likely be different depending on your environment
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: home-dashboard
+  namespace: home-dashboard
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "home-dashboard.nathanmorin.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: home-dashboard
+            port:
+              number: 80
